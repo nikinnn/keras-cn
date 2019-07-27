@@ -7,6 +7,7 @@ keras.preprocessing.image.ImageDataGenerator(featurewise_center=False,
     featurewise_std_normalization=False,
     samplewise_std_normalization=False,
     zca_whitening=False,
+    zca_epsilon=1e-6,
     rotation_range=0.,
     width_shift_range=0.,
     height_shift_range=0.,
@@ -18,7 +19,8 @@ keras.preprocessing.image.ImageDataGenerator(featurewise_center=False,
     horizontal_flip=False,
     vertical_flip=False,
     rescale=None,
-    dim_ordering=K.image_dim_ordering())
+    preprocessing_function=None,
+    data_format=K.image_data_format())
 ```
 用以生成一个batch的图像数据，支持实时数据提升。训练时该函数会无限生成数据，直到达到规定的epoch次数为止。
 
@@ -33,6 +35,8 @@ keras.preprocessing.image.ImageDataGenerator(featurewise_center=False,
 * samplewise_std_normalization：布尔值，将输入的每个样本除以其自身的标准差
 
 * zca_whitening：布尔值，对输入数据施加ZCA白化
+
+* zca_epsilon: ZCA使用的eposilon，默认1e-6
 
 * rotation_range：整数，数据提升时图片随机转动的角度
 
@@ -55,14 +59,15 @@ keras.preprocessing.image.ImageDataGenerator(featurewise_center=False,
 * vertical_flip：布尔值，进行随机竖直翻转
 
 * rescale: 重放缩因子,默认为None. 如果为None或0则不进行放缩,否则会将该数值乘到数据上(在应用其他变换之前)
+* preprocessing_function: 将被应用于每个输入的函数。该函数将在图片缩放和数据提升之后运行。该函数接受一个参数，为一张图片（秩为3的numpy array），并且输出一个具有相同shape的numpy array
 
-* dim_ordering：‘tf’和‘th’之一，规定数据的维度顺序。‘tf’模式下数据的形状为```samples, height, width, channels```，‘th’下形状为```(samples, channels, height, width).```该参数的默认值是Keras配置文件```~/.keras/keras.json```的```image_dim_ordering```值,如果你从未设置过的话,就是'tf'
+* data_format：字符串，“channel_first”或“channel_last”之一，代表图像的通道维的位置。该参数是Keras 1.x中的image_dim_ordering，“channel_last”对应原本的“tf”，“channel_first”对应原本的“th”。以128x128的RGB图像为例，“channel_first”应将数据组织为（3,128,128），而“channel_last”应将数据组织为（128,128,3）。该参数的默认值是```~/.keras/keras.json```中设置的值，若从未设置过，则为“channel_last”
 
 ***
 
 ### 方法
 
-* fit(X, augment=False, rounds=1)：计算依赖于数据的变换所需要的统计信息(均值方差等),只有使用```featurewise_center```，```featurewise_std_normalization```或```zca_whitening```时需要此函数。
+* fit(x, augment=False, rounds=1)：计算依赖于数据的变换所需要的统计信息(均值方差等),只有使用```featurewise_center```，```featurewise_std_normalization```或```zca_whitening```时需要此函数。
 
 	* X：numpy array，样本数据，秩应为4.在黑白图像的情况下channel轴的值为1，在彩色图像情况下值为3
 	
@@ -72,9 +77,9 @@ keras.preprocessing.image.ImageDataGenerator(featurewise_center=False,
 	
 	* seed: 整数,随机数种子
 	
-* flow(self, X, y, batch_size=32, shuffle=True, seed=None, save_to_dir=None, save_prefix='', save_format='jpeg')：接收numpy数组和标签为参数,生成经过数据提升或标准化后的batch数据,并在一个无限循环中不断的返回batch数据
+* flow(self, X, y, batch_size=32, shuffle=True, seed=None, save_to_dir=None, save_prefix='', save_format='png')：接收numpy数组和标签为参数,生成经过数据提升或标准化后的batch数据,并在一个无限循环中不断的返回batch数据
 
-	* X：样本数据，秩应为4.在黑白图像的情况下channel轴的值为1，在彩色图像情况下值为3
+	* x：样本数据，秩应为4.在黑白图像的情况下channel轴的值为1，在彩色图像情况下值为3
 	
 	* y：标签
 	
@@ -94,10 +99,10 @@ keras.preprocessing.image.ImageDataGenerator(featurewise_center=False,
 
 * flow_from_directory(directory): 以文件夹路径为参数,生成经过数据提升/归一化后的数据,在一个无限循环中无限产生batch数据
 
-	* directory: 目标文件夹路径,对于每一个类,该文件夹都要包含一个子文件夹.子文件夹中任何JPG、PNG和BNP的图片都会被生成器使用.详情请查看[<font color='#FF0000'>此脚本</font>](https://gist.github.com/fchollet/0830affa1f7f19fd47b06d4cf89ed44d)
+	* directory: 目标文件夹路径,对于每一个类,该文件夹都要包含一个子文件夹.子文件夹中任何JPG、PNG、BNP、PPM的图片都会被生成器使用.详情请查看[<font color='#FF0000'>此脚本</font>](https://gist.github.com/fchollet/0830affa1f7f19fd47b06d4cf89ed44d)
     * target_size: 整数tuple,默认为(256, 256). 图像将被resize成该尺寸
     * color_mode: 颜色模式,为"grayscale","rgb"之一,默认为"rgb".代表这些图片是否会被转换为单通道或三通道的图片.
-    * classes: 可选参数,为子文件夹的列表,如['dogs','cats']默认为None. 若未提供,则该类别列表将自动推断(类别的顺序将按照字母表顺序映射到标签值)
+    * classes: 可选参数,为子文件夹的列表,如['dogs','cats']默认为None. 若未提供,则该类别列表将从`directory`下的子文件夹名称/结构自动推断。每一个子文件夹都会被认为是一个新的类。(类别的顺序将按照字母表顺序映射到标签值)。通过属性`class_indices`可获得文件夹名与类的序号的对应字典。
     * class_mode: "categorical", "binary", "sparse"或None之一. 默认为"categorical. 该参数决定了返回的标签数组的形式, "categorical"会返回2D的one-hot编码标签,"binary"返回1D的二值标签."sparse"返回1D的整数标签,如果为None则不返回任何标签, 生成器将仅仅生成batch数据, 这种情况在使用```model.predict_generator()```和```model.evaluate_generator()```等函数时会用到.
     * batch_size: batch数据的大小,默认32
     * shuffle: 是否打乱数据,默认为True
@@ -112,9 +117,9 @@ keras.preprocessing.image.ImageDataGenerator(featurewise_center=False,
 
 使用```.flow()```的例子
 ```python
-(X_train, y_train), (X_test, y_test) = cifar10.load_data()
-Y_train = np_utils.to_categorical(y_train, nb_classes)
-Y_test = np_utils.to_categorical(y_test, nb_classes)
+(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+y_train = np_utils.to_categorical(y_train, num_classes)
+y_test = np_utils.to_categorical(y_test, num_classes)
 
 datagen = ImageDataGenerator(
     featurewise_center=True,
@@ -126,20 +131,20 @@ datagen = ImageDataGenerator(
 
 # compute quantities required for featurewise normalization
 # (std, mean, and principal components if ZCA whitening is applied)
-datagen.fit(X_train)
+datagen.fit(x_train)
 
 # fits the model on batches with real-time data augmentation:
-model.fit_generator(datagen.flow(X_train, Y_train, batch_size=32),
-                    samples_per_epoch=len(X_train), nb_epoch=nb_epoch)
+model.fit_generator(datagen.flow(x_train, y_train, batch_size=32),
+                    steps_per_epoch=len(x_train), epochs=epochs)
 
 # here's a more "manual" example
-for e in range(nb_epoch):
+for e in range(epochs):
     print 'Epoch', e
     batches = 0
-    for X_batch, Y_batch in datagen.flow(X_train, Y_train, batch_size=32):
-        loss = model.train(X_batch, Y_batch)
+    for x_batch, y_batch in datagen.flow(x_train, y_train, batch_size=32):
+        loss = model.train(x_batch, y_batch)
         batches += 1
-        if batches >= len(X_train) / 32:
+        if batches >= len(x_train) / 32:
             # we need to break the loop by hand because
             # the generator loops indefinitely
             break
@@ -169,10 +174,10 @@ validation_generator = test_datagen.flow_from_directory(
 
 model.fit_generator(
         train_generator,
-        samples_per_epoch=2000,
-        nb_epoch=50,
+        steps_per_epoch=2000,
+        epochs=50,
         validation_data=validation_generator,
-        nb_val_samples=800)
+        validation_steps=800)
 ```
 
 同时变换图像和mask
@@ -208,6 +213,6 @@ train_generator = zip(image_generator, mask_generator)
 
 model.fit_generator(
     train_generator,
-    samples_per_epoch=2000,
-    nb_epoch=50)
+    steps_per_epoch=2000,
+    epochs=50)
 ```

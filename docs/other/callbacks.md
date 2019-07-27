@@ -4,10 +4,6 @@
 
 【Tips】虽然我们称之为回调“函数”，但事实上Keras的回调函数是一个类，回调函数只是习惯性称呼
 
-## CallbackList
-```python
-keras.callbacks.CallbackList(callbacks=[], queue_length=10)
-```
 
 ## Callback
 ```python
@@ -131,7 +127,7 @@ keras.callbacks.LearningRateScheduler(schedule)
 
 ## TensorBoard
 ```python
-keras.callbacks.TensorBoard(log_dir='./logs', histogram_freq=0)
+keras.callbacks.TensorBoard(log_dir='./logs', histogram_freq=0, write_graph=True, write_images=False, embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None)
 ```
 该回调函数是一个可视化的展示器
 
@@ -142,13 +138,19 @@ TensorBoard是TensorFlow提供的可视化工具，该回调函数将日志信�
 ```python
 tensorboard --logdir=/full_path_to_your_logs
 ```
-更多的参考信息，请点击[<font color='#FF0000'>这里</font>](http://keras.io/https__://www.tensorflow.org/versions/master/how_tos/summaries_and_tensorboard/index.html)
+更多的参考信息，请点击[这里](https://www.tensorflow.org/get_started/summaries_and_tensorboard)
 
 ### 参数
 
 * log_dir：保存日志文件的地址，该文件将被TensorBoard解析以用于可视化
 
 * histogram_freq：计算各个层激活值直方图的频率（每多少个epoch计算一次），如果设置为0则不计算。
+
+* write_graph: 是否在Tensorboard上可视化图，当设为True时，log文件可能会很大
+* write_images: 是否将模型权重以图片的形式可视化
+* embeddings_freq: 依据该频率(以epoch为单位)筛选保存的embedding层
+* embeddings_layer_names:要观察的层名称的列表，若设置为None或空列表，则所有embedding层都将被观察。 
+* embeddings_metadata: 字典，将层名称映射为包含该embedding层元数据的文件名，参考[这里](https://keras.io/https__://www.tensorflow.org/how_tos/embedding_viz/#metadata_optional)获得元数据文件格式的细节。如果所有的embedding层都使用相同的元数据文件，则可传递字符串。
 
 ***
 
@@ -170,12 +172,6 @@ keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, v
 - cooldown：学习率减少后，会经过cooldown个epoch才重新进行正常操作
 - min_lr：学习率的下限
 
-### 示例：
-```python
-reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
-            patience=5, min_lr=0.001)
-model.fit(X_train, Y_train, callbacks=[reduce_lr])
-``` 
 
 ##CSVLogger
 ```python
@@ -189,12 +185,6 @@ keras.callbacks.CSVLogger(filename, separator=',', append=False)
 - separator：字符串，csv分隔符
 - append：默认为False，为True时csv文件如果存在则继续写入，为False时总是覆盖csv文件
 
-### 示例
-
-```python
-csv_logger = CSVLogger('training.log')
-model.fit(X_train, Y_train, callbacks=[csv_logger])
-```
 
 ## LambdaCallback
 ```python
@@ -217,18 +207,26 @@ keras.callbacks.LambdaCallback(on_epoch_begin=None, on_epoch_end=None, on_batch_
 
 ```python
 # Print the batch number at the beginning of every batch.
-batch_print_callback = LambdaCallback(on_batch_begin=lambda batch, logs: print(batch))
+batch_print_callback = LambdaCallback(
+    on_batch_begin=lambda batch,logs: print(batch))
 
 # Plot the loss after every epoch.
 import numpy as np
 import matplotlib.pyplot as plt
-plot_loss_callback = LambdaCallback(on_epoch_end=lambda epoch, logs: plt.plot(np.arange(epoch), logs['loss']))
+plot_loss_callback = LambdaCallback(
+    on_epoch_end=lambda epoch, logs: plt.plot(np.arange(epoch),
+                      logs['loss']))
 
 # Terminate some processes after having finished model training.
 processes = ...
-cleanup_callback = LambdaCallback(on_train_end=lambda logs: [p.terminate() for p in processes if p.is_alive()])
+cleanup_callback = LambdaCallback(
+    on_train_end=lambda logs: [
+    p.terminate() for p in processes if p.is_alive()])
 
-model.fit(..., callbacks=[batch_print_callback, plot_loss_callback, cleanup_callback])
+model.fit(...,
+      callbacks=[batch_print_callback,
+         plot_loss_callback,
+         cleanup_callback])
 ```
 
 ## 编写自己的回调函数
@@ -256,12 +254,12 @@ class LossHistory(keras.callbacks.Callback):
         self.losses.append(logs.get('loss'))
 
 model = Sequential()
-model.add(Dense(10, input_dim=784, init='uniform'))
+model.add(Dense(10, input_dim=784, kernel_initializer='uniform'))
 model.add(Activation('softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
 history = LossHistory()
-model.fit(X_train, Y_train, batch_size=128, nb_epoch=20, verbose=0, callbacks=[history])
+model.fit(X_train, Y_train, batch_size=128, epochs=20, verbose=0, callbacks=[history])
 
 print history.losses
 # outputs
@@ -274,7 +272,7 @@ print history.losses
 from keras.callbacks import ModelCheckpoint
 
 model = Sequential()
-model.add(Dense(10, input_dim=784, init='uniform'))
+model.add(Dense(10, input_dim=784, kernel_initializer='uniform'))
 model.add(Activation('softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
@@ -282,7 +280,7 @@ model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 saves the model weights after each epoch if the validation loss decreased
 '''
 checkpointer = ModelCheckpoint(filepath="/tmp/weights.hdf5", verbose=1, save_best_only=True)
-model.fit(X_train, Y_train, batch_size=128, nb_epoch=20, verbose=0, validation_data=(X_test, Y_test), callbacks=[checkpointer])
+model.fit(X_train, Y_train, batch_size=128, epochs=20, verbose=0, validation_data=(X_test, Y_test), callbacks=[checkpointer])
 ```
 
 
